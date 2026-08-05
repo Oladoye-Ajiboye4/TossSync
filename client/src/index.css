@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #A8BBA3;
+  /* Sage */
+  --color-secondary: #B87C4C;
+  /* Brown */
+  --color-tertiary: #C4A484;
+  /* Light Brown */
+  --color-background: #F7F1DE;
+  /* Beige */
+}
+
+:root {
+  /* Raw variables kept in :root for use outside Tailwind utilities (inline styles, plain CSS) */
+  --color-primary: #A8BBA3;
+  --color-secondary: #B87C4C;
+  --color-tertiary: #C4A484;
+  --color-background: #F7F1DE;
+}
+
+body {
+  background-color: var(--color-background);
+}
