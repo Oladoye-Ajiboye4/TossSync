@@ -171,10 +171,6 @@ const Signin = () => {
                     <Icon icon="flat-color-icons:google" width="22" height="22" />
                     <span>Continue with Google</span>
                   </button>
-                  <button type="button" onClick={() => handleSocial('github')} className="flex gap-3 justify-center items-center font-semibold bg-[#2f3a2b] py-3 rounded-xl hover:brightness-110 transition text-white">
-                    <Icon icon="mdi:github" width="22" height="22" />
-                    <span>Continue with GitHub</span>
-                  </button>
                 </div>
               </>
             )}

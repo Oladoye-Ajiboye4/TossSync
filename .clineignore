@@ -1,0 +1,13 @@
+# Hide sensitive Auth routes from AgentRouter WAF
+client/src/pages/auth/
+client/src/pages/forgotPassword/
+client/src/pages/resetPassword/
+client/src/components/socialAuth.jsx
+server/auth/
+server/controllers/authController.js
+server/routes/authRoutes.js
+
+# Optional: Hide large files to save token costs
+node_modules/
+.git/
+*.log
