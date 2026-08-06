@@ -20,7 +20,12 @@ const organizationSchema = new mongoose.Schema({
             enum: ['weekly', 'bi-weekly', 'monthly', 'custom'], 
             required: true 
         },
+        // Legacy single-day (kept in sync with days_of_week[0] for backward compatibility)
         day_of_week: { type: Number, min: 0, max: 6 }, // 0 = Sunday, 6 = Saturday
+        // Multi-day selection (Mon–Sun) chosen in the Pickup Cycles builder
+        days_of_week: [{ type: Number, min: 0, max: 6 }],
+        // Official pickup time stored as 24h "HH:mm"
+        pickup_time: { type: String },
         custom_dates: [Date],
         description: { type: String }
     }],

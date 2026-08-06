@@ -6,6 +6,7 @@ import gsap from 'gsap'
 import api from '../../../api/axios'
 import OverviewTab from './tabs/OverviewTab'
 import ConnectedResidentsTab from './tabs/ConnectedResidentsTab'
+import PickupCyclesTab from './tabs/PickupCyclesTab'
 import FormBuilderTab from './tabs/FormBuilderTab'
 import ShareTab from './tabs/ShareTab'
 import BulkToolsTab from './tabs/BulkToolsTab'
@@ -13,6 +14,7 @@ import BulkToolsTab from './tabs/BulkToolsTab'
 const TABS = [
   { id: 'overview', label: 'Overview', icon: 'mdi:view-dashboard-outline' },
   { id: 'residents', label: 'Connected Residents', icon: 'mdi:account-group' },
+  { id: 'cycles', label: 'Pickup Cycles', icon: 'mdi:calendar-clock' },
   { id: 'onboarding', label: 'Registration Fields', icon: 'mdi:form-textbox' },
   { id: 'share', label: 'Share & Invite', icon: 'mdi:share-variant-outline' },
   { id: 'bulk', label: 'Bulk Tools', icon: 'mdi:database-cog-outline' }
@@ -119,6 +121,15 @@ const AdminDashboard = ({ user, notify, errorNotify }) => {
           <ConnectedResidentsTab
             organization={organization}
             onUpdate={fetchOrganization}
+            onNavigate={setActiveTab}
+            notify={notify}
+            errorNotify={errorNotify}
+          />
+        )}
+        {activeTab === 'cycles' && (
+          <PickupCyclesTab
+            organization={organization}
+            onRefresh={fetchOrganization}
             notify={notify}
             errorNotify={errorNotify}
           />

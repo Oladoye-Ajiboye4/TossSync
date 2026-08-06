@@ -1,8 +1,10 @@
 const User = require('../models/user.model')
 const Organization = require('../models/organization.model')
+const Schedule = require('../models/schedule.model')
 const bcrypt = require('bcryptjs')
 const { generateRegistrationCode } = require('../utils/codeGenerator')
 const { sendRegistrationCodeEmail } = require('../utils/emailService')
+
 
 /**
  * CONNECT — Solo Resident links to an Admin Organization using its business_id.
@@ -53,16 +55,46 @@ const getMyOrganization = async (req, res) => {
     try {
         const organization = await Organization.findOne({ admin_id: req.user._id })
             .populate('connected_residents', 'username email area registration_code provider_status createdAt')
+            .lean()
 
         if (!organization) {
             return res.status(404).json({ message: 'Organization not found' })
         }
-        return res.status(200).json({ status: true, organization })
+
+        // Pull every schedule for this org once, then index by resident_id via .reduce()
+        // (zero-loop) so each resident can be enriched with live CRM tracking data.
+        const schedules = await Schedule.find({ organization_id: organization._id }).lean()
+        const scheduleByResident = schedules.reduce((acc, schedule) => {
+            acc[String(schedule.resident_id)] = schedule
+            return acc
+        }, {})
+
+        const enrichedResidents = (organization.connected_residents || []).map((resident) => {
+            const schedule = scheduleByResident[String(resident._id)]
+            return {
+                ...resident,
+                assigned_cycle: schedule?.cycle_name || null,
+                // Expose the foreign key so the UI can match residents to a specific
+                // cycle even if two cycles ever shared a display name.
+                assigned_cycle_id: schedule?.assigned_cycle_id || null,
+                weekly_status: schedule?.weekly_status || 'pending',
+                skip_next: schedule?.skip_next || false,
+                next_pickup: schedule?.next_pickup || null,
+                missed_pickups: schedule?.missed_pickups || [],
+                status_updated_at: schedule?.status_updated_at || null
+            }
+        })
+
+        return res.status(200).json({
+            status: true,
+            organization: { ...organization, connected_residents: enrichedResidents }
+        })
     } catch (err) {
         console.error('Get organization error:', err)
         return res.status(500).json({ message: 'Internal server error' })
     }
 }
+
 
 /**
  * UPDATE CODE FORMAT — Admin configures registration_code generation rules.
@@ -89,13 +121,26 @@ const updateCodeFormat = async (req, res) => {
 }
 
 /**
- * CREATE CYCLE — Admin adds a custom pickup cycle to their org.
+ * Normalize a days_of_week payload into a clean, de-duplicated, calendar-sorted
+ * array of integers 0–6. Pure array methods only (Zero-Loop Rule).
+ */
+const sanitizeDays = (days) => {
+    if (!Array.isArray(days)) return []
+    return days
+        .map((d) => Number(d))
+        .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+        .reduce((acc, d) => (acc.includes(d) ? acc : [...acc, d]), [])
+        .sort((a, b) => a - b)
+}
+
+/**
+ * CREATE CYCLE — Admin adds an official pickup cycle to their org.
  * Requires: authenticate + authorize('admin').
- * Body: { name, frequency, day_of_week?, custom_dates?, description? }
+ * Body: { name, frequency, days_of_week?, pickup_time?, day_of_week?, custom_dates?, description? }
  */
 const createCycle = async (req, res) => {
     try {
-        const { name, frequency, day_of_week, custom_dates, description } = req.body
+        const { name, frequency, days_of_week, pickup_time, day_of_week, custom_dates, description } = req.body
         if (!name || !frequency) {
             return res.status(400).json({ message: 'Cycle name and frequency are required' })
         }
@@ -105,7 +150,19 @@ const createCycle = async (req, res) => {
             return res.status(404).json({ message: 'Organization not found' })
         }
 
-        organization.pickup_cycles.push({ name, frequency, day_of_week, custom_dates, description })
+        const cleanDays = sanitizeDays(days_of_week)
+        // Keep the legacy single-day field in sync with the first selected day.
+        const primaryDay = cleanDays.length > 0 ? cleanDays[0] : day_of_week
+
+        organization.pickup_cycles.push({
+            name,
+            frequency,
+            days_of_week: cleanDays,
+            pickup_time: pickup_time || undefined,
+            day_of_week: primaryDay,
+            custom_dates,
+            description
+        })
         await organization.save()
 
         return res.status(201).json({
@@ -114,6 +171,81 @@ const createCycle = async (req, res) => {
         })
     } catch (err) {
         console.error('Create cycle error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
+ * UPDATE CYCLE — Admin edits an existing pickup cycle.
+ * Requires: authenticate + authorize('admin'). Params: :cycleId
+ * Body: { name?, frequency?, days_of_week?, pickup_time?, description? }
+ */
+const updateCycle = async (req, res) => {
+    try {
+        const { cycleId } = req.params
+        const { name, frequency, days_of_week, pickup_time, description } = req.body
+
+        const organization = await Organization.findOne({ admin_id: req.user._id })
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' })
+        }
+
+        const cycle = organization.pickup_cycles.id(cycleId)
+        if (!cycle) {
+            return res.status(404).json({ message: 'Pickup cycle not found' })
+        }
+
+        if (typeof name === 'string' && name.trim().length > 0) cycle.name = name.trim()
+        if (typeof frequency === 'string' && frequency.length > 0) cycle.frequency = frequency
+        if (description !== undefined) cycle.description = description
+        if (pickup_time !== undefined) cycle.pickup_time = pickup_time || undefined
+        if (days_of_week !== undefined) {
+            const cleanDays = sanitizeDays(days_of_week)
+            cycle.days_of_week = cleanDays
+            cycle.day_of_week = cleanDays.length > 0 ? cleanDays[0] : cycle.day_of_week
+        }
+        await organization.save()
+
+        return res.status(200).json({
+            message: 'Pickup cycle updated',
+            pickup_cycles: organization.pickup_cycles
+        })
+    } catch (err) {
+        console.error('Update cycle error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
+ * DELETE CYCLE — Admin removes a pickup cycle from their org.
+ * Requires: authenticate + authorize('admin'). Params: :cycleId
+ */
+const deleteCycle = async (req, res) => {
+    try {
+        const { cycleId } = req.params
+
+        const organization = await Organization.findOne({ admin_id: req.user._id })
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' })
+        }
+
+        const exists = (organization.pickup_cycles || []).some((c) => String(c._id) === String(cycleId))
+        if (!exists) {
+            return res.status(404).json({ message: 'Pickup cycle not found' })
+        }
+
+        // Remove via .filter() (Zero-Loop Rule)
+        organization.pickup_cycles = organization.pickup_cycles.filter(
+            (c) => String(c._id) !== String(cycleId)
+        )
+        await organization.save()
+
+        return res.status(200).json({
+            message: 'Pickup cycle deleted',
+            pickup_cycles: organization.pickup_cycles
+        })
+    } catch (err) {
+        console.error('Delete cycle error:', err)
         return res.status(500).json({ message: 'Internal server error' })
     }
 }
@@ -287,12 +419,103 @@ const bulkUploadResidents = async (req, res) => {
     }
 }
 
+/**
+ * UPDATE RESIDENT — Admin edits a connected resident's editable profile (name, area).
+ * Requires: authenticate + authorize('admin'). Params: :id. Body: { username?, area? }
+ */
+const updateResident = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { username, area } = req.body
+
+        const organization = await Organization.findOne({ admin_id: req.user._id })
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' })
+        }
+
+        // Ownership guard: the resident must belong to this admin's organization
+        const owns = (organization.connected_residents || []).some((r) => String(r) === String(id))
+        if (!owns) {
+            return res.status(403).json({ message: 'This resident is not part of your organization' })
+        }
+
+        const resident = await User.findById(id)
+        if (!resident) {
+            return res.status(404).json({ message: 'Resident not found' })
+        }
+
+        if (typeof username === 'string' && username.trim().length > 0) {
+            resident.username = username.trim()
+        }
+        if (area !== undefined) {
+            resident.area = typeof area === 'string' && area.trim().length > 0 ? area.trim() : null
+        }
+        await resident.save()
+
+        return res.status(200).json({
+            message: 'Resident updated',
+            resident: { id: resident._id, username: resident.username, area: resident.area }
+        })
+    } catch (err) {
+        console.error('Update resident error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
+ * DISCONNECT RESIDENT — Admin removes a resident from the organization.
+ * Detaches the user (reverts to solo) and clears their org schedule. Non-destructive to the account.
+ * Requires: authenticate + authorize('admin'). Params: :id
+ */
+const disconnectResident = async (req, res) => {
+    try {
+        const { id } = req.params
+
+        const organization = await Organization.findOne({ admin_id: req.user._id })
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' })
+        }
+
+        const owns = (organization.connected_residents || []).some((r) => String(r) === String(id))
+        if (!owns) {
+            return res.status(403).json({ message: 'This resident is not part of your organization' })
+        }
+
+        // Remove the reference via .filter() (zero-loop)
+        organization.connected_residents = organization.connected_residents.filter(
+            (r) => String(r) !== String(id)
+        )
+        await organization.save()
+
+        // Revert the resident back to a solo account
+        await User.findByIdAndUpdate(id, {
+            provider_status: 'solo',
+            organization_id: null,
+            business_id: null,
+            $unset: { registration_code: 1 }
+        })
+
+        // Clean up their org-scoped schedule so stale tracking data is not left behind
+        await Schedule.deleteOne({ resident_id: id, organization_id: organization._id })
+
+        return res.status(200).json({ message: 'Resident disconnected from your organization' })
+    } catch (err) {
+        console.error('Disconnect resident error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
 module.exports = {
     connectToOrganization,
     getMyOrganization,
     updateCodeFormat,
     updateFormSchema,
     createCycle,
+    updateCycle,
+    deleteCycle,
     createManagedResident,
-    bulkUploadResidents
+    bulkUploadResidents,
+    updateResident,
+    disconnectResident
 }
+

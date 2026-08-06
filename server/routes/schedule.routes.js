@@ -4,7 +4,8 @@ const {
     getMySchedule,
     assignSchedule,
     reportMissedPickup,
-    updatePersonalSchedule
+    updatePersonalSchedule,
+    updateResidentTracking
 } = require('../controllers/schedule.controller')
 const { authenticate, authorize } = require('../middlewares/auth.middleware')
 
@@ -15,5 +16,9 @@ router.put('/personal', authenticate, updatePersonalSchedule)
 
 // Admin action: assign a schedule to a resident
 router.post('/assign', authenticate, authorize('admin'), assignSchedule)
+
+// Admin action: update weekly status / skip-next tracking for a resident
+router.patch('/tracking', authenticate, authorize('admin'), updateResidentTracking)
+
 
 module.exports = router

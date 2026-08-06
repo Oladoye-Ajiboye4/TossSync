@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { Icon } from '@iconify/react'
 
+import { formatPickupDateTime } from '../../../lib/cycleTime'
+
 
 const getCountdown = (target) => {
   if (!target) return null
@@ -54,9 +56,7 @@ const CountdownHero = ({ providerNext, personalDates }) => {
 
 
 
-  const nextDateStr = nextPickup?.date
-    ? new Date(nextPickup.date).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-    : 'No upcoming pickup'
+  const nextDateStr = formatPickupDateTime(nextPickup?.date) || 'No upcoming pickup'
 
   return (
     <div

@@ -1,14 +1,15 @@
 import React from 'react'
 import { Icon } from '@iconify/react'
 
+import { formatPickupDateTime } from '../../../lib/cycleTime'
+
 /**
  * Provider Status Card — shows connection status and official cycle details.
  * Renders a "connected" state when a schedule/org exists, otherwise a "solo" prompt.
  */
 const ProviderStatusCard = ({ connected, orgName, cycleName, nextPickup }) => {
-  const nextStr = nextPickup
-    ? new Date(nextPickup).toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-    : 'Not scheduled yet'
+  // Full, human date-time e.g. "Saturday, August 8, 2026 at 10:00 AM".
+  const nextStr = formatPickupDateTime(nextPickup)
 
   if (!connected) {
     return (
@@ -45,7 +46,14 @@ const ProviderStatusCard = ({ connected, orgName, cycleName, nextPickup }) => {
         </div>
         <div className="rounded-2xl bg-background/50 p-4">
           <dt className="text-xs font-semibold uppercase tracking-wide text-secondary/60">Next Official Pickup</dt>
-          <dd className="mt-1 font-bold text-secondary">{nextStr}</dd>
+          {nextStr ? (
+            <dd className="mt-1 font-bold text-secondary">{nextStr}</dd>
+          ) : (
+            <dd className="mt-1 flex items-start gap-1.5 text-sm font-semibold text-secondary/70">
+              <Icon icon="mdi:calendar-question" width="18" height="18" className="mt-px shrink-0 text-secondary/50" aria-hidden="true" />
+              No pickup scheduled yet — check back once your provider confirms your assignment.
+            </dd>
+          )}
         </div>
       </dl>
     </div>

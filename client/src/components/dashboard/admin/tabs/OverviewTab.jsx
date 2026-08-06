@@ -3,7 +3,7 @@ import { Icon } from '@iconify/react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+import { formatSchedule } from '../../../../lib/cycleTime'
 
 const FREQUENCY_BADGES = {
   weekly: { label: 'Weekly', className: 'bg-primary/30 text-secondary' },
@@ -26,7 +26,7 @@ const OverviewTab = ({ organization }) => {
       id: cycle._id || cycle.name,
       name: cycle.name,
       description: cycle.description,
-      day: typeof cycle.day_of_week === 'number' ? DAY_NAMES[cycle.day_of_week] : 'Flexible',
+      schedule: formatSchedule(cycle),
       badge: FREQUENCY_BADGES[cycle.frequency] || FREQUENCY_BADGES.custom
     }))
   ), [organization])
@@ -87,7 +87,7 @@ const OverviewTab = ({ organization }) => {
                 <div className="min-w-0">
                   <p className="truncate font-semibold text-[#5b4a3a]">{pickup.name}</p>
                   <p className="truncate text-sm text-secondary/70">
-                    {pickup.day}{pickup.description ? ` • ${pickup.description}` : ''}
+                    {pickup.schedule}{pickup.description ? ` • ${pickup.description}` : ''}
                   </p>
                 </div>
                 <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${pickup.badge.className}`}>

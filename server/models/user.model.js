@@ -73,8 +73,23 @@ const userSchema = new mongoose.Schema({
         // Keep personal reminders active alongside the provider schedule
         hybrid_mode: { type: Boolean, default: false }
     },
+
+    // Web Push: one entry per subscribed browser/device (a user may have many).
+    // Shape mirrors the browser PushSubscription object consumed by `web-push`.
+    push_subscriptions: {
+        type: [{
+            endpoint: { type: String, required: true },
+            expirationTime: { type: Number, default: null },
+            keys: {
+                p256dh: { type: String, required: true },
+                auth: { type: String, required: true }
+            }
+        }],
+        default: []
+    },
     createdAt: { type: Date, default: Date.now }
 })
+
 
 // Unique only among documents that actually have a string registration_code.
 // A partial index (unlike sparse) correctly ignores both missing AND null values.
