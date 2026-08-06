@@ -1,5 +1,9 @@
 const Schedule = require('../models/schedule.model')
 const Organization = require('../models/organization.model')
+const User = require('../models/user.model')
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 
 /**
  * GET MY SCHEDULE — Managed Resident fetches their pickup cycle & next pickup.
@@ -95,8 +99,104 @@ const reportMissedPickup = async (req, res) => {
     }
 }
 
+/**
+ * UPDATE PERSONAL SCHEDULE — Resident saves their autonomous pickup cycle & reminders.
+ * Available always (solo or linked). Requires: authenticate.
+ * Body: { enabled, frequency, pickup_dates, notification_time, reminder_lead_time, secondary_emails, hybrid_mode }
+ */
+const updatePersonalSchedule = async (req, res) => {
+    try {
+        const {
+            enabled,
+            frequency,
+            custom_days,
+            pickup_dates,
+            notification_time,
+            reminder_lead_value,
+            reminder_lead_unit,
+            pickup_time_value,
+            pickup_time_unit,
+            timezone,
+            secondary_emails,
+            hybrid_mode
+        } = req.body
+
+        const VALID_DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        const VALID_UNITS = ['minutes', 'hours']
+
+        // Sanitize selected custom days against the allow-list (no loops)
+        const cleanedDays = Array.isArray(custom_days)
+            ? custom_days
+                .filter((day) => VALID_DAYS.includes(day))
+                .filter((day, index, arr) => arr.indexOf(day) === index)
+            : []
+
+        const toUnit = (unit, fallback) => (VALID_UNITS.includes(unit) ? unit : fallback)
+        const toValue = (value, fallback) => {
+            const n = Number(value)
+            return Number.isFinite(n) && n >= 0 ? n : fallback
+        }
+
+
+        // Normalize + validate secondary emails using array methods (no loops)
+        const cleanedEmails = Array.isArray(secondary_emails)
+            ? secondary_emails
+                .map((email) => String(email).trim().toLowerCase())
+                .filter((email) => email.length > 0)
+            : []
+
+        const uniqueEmails = cleanedEmails.filter((email, index) => cleanedEmails.indexOf(email) === index)
+
+        if (uniqueEmails.length > 2) {
+            return res.status(400).json({ message: 'A maximum of 2 secondary emails is allowed' })
+        }
+
+        const invalidEmail = uniqueEmails.find((email) => !EMAIL_REGEX.test(email))
+        if (invalidEmail) {
+            return res.status(400).json({ message: `Invalid email address: ${invalidEmail}` })
+        }
+
+        const dates = Array.isArray(pickup_dates)
+            ? pickup_dates.map((d) => new Date(d)).filter((d) => !Number.isNaN(d.getTime()))
+            : []
+
+        const user = await User.findById(req.user._id)
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' })
+        }
+
+        user.personal_schedule = {
+            enabled: enabled ?? user.personal_schedule?.enabled ?? false,
+            frequency: frequency ?? user.personal_schedule?.frequency ?? 'weekly',
+            custom_days: cleanedDays,
+            pickup_dates: dates,
+            notification_time: notification_time ?? user.personal_schedule?.notification_time ?? '08:00',
+            reminder_lead_value: toValue(reminder_lead_value, user.personal_schedule?.reminder_lead_value ?? 2),
+            reminder_lead_unit: toUnit(reminder_lead_unit, user.personal_schedule?.reminder_lead_unit ?? 'hours'),
+            pickup_time_value: toValue(pickup_time_value, user.personal_schedule?.pickup_time_value ?? 8),
+            pickup_time_unit: toUnit(pickup_time_unit, user.personal_schedule?.pickup_time_unit ?? 'hours'),
+            timezone: typeof timezone === 'string' && timezone.length > 0
+                ? timezone
+                : user.personal_schedule?.timezone ?? 'UTC',
+            secondary_emails: uniqueEmails,
+            hybrid_mode: hybrid_mode ?? user.personal_schedule?.hybrid_mode ?? false
+        }
+
+        await user.save()
+
+        return res.status(200).json({
+            message: 'Personal schedule saved',
+            personal_schedule: user.personal_schedule
+        })
+    } catch (err) {
+        console.error('Update personal schedule error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
 module.exports = {
     getMySchedule,
     assignSchedule,
-    reportMissedPickup
+    reportMissedPickup,
+    updatePersonalSchedule
 }

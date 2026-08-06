@@ -28,6 +28,51 @@ const userSchema = new mongoose.Schema({
         type: String, 
         default: null 
     },
+    area: {
+        type: String,
+        default: null
+    },
+
+    // Resident-owned autonomous schedule + reminder settings (Feature A/B)
+    personal_schedule: {
+        enabled: { type: Boolean, default: false },
+        frequency: {
+            type: String,
+            enum: ['weekly', 'bi-weekly', 'custom'],
+            default: 'weekly'
+        },
+        // Selected weekday names for 'custom' frequency (e.g. ['Mon','Wed'])
+        custom_days: { type: [String], default: [] },
+        pickup_dates: [{ type: Date }],
+        notification_time: { type: String, default: '08:00' }, // HH:mm 24h
+        // Dynamic composite reminder lead time (value + unit)
+        reminder_lead_value: { type: Number, default: 2, min: 0 },
+        reminder_lead_unit: {
+            type: String,
+            enum: ['minutes', 'hours'],
+            default: 'hours'
+        },
+        // Dynamic composite pickup schedule time (value + unit)
+        pickup_time_value: { type: Number, default: 8, min: 0 },
+        pickup_time_unit: {
+            type: String,
+            enum: ['minutes', 'hours'],
+            default: 'hours'
+        },
+        // Resident's local IANA timezone, injected client-side for accurate firing on Render
+        timezone: { type: String, default: 'UTC' },
+
+        secondary_emails: {
+            type: [String],
+            validate: {
+                validator: (emails) => Array.isArray(emails) && emails.length <= 2,
+                message: 'A maximum of 2 secondary emails is allowed'
+            },
+            default: []
+        },
+        // Keep personal reminders active alongside the provider schedule
+        hybrid_mode: { type: Boolean, default: false }
+    },
     createdAt: { type: Date, default: Date.now }
 })
 

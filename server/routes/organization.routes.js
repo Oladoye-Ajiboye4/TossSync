@@ -4,6 +4,7 @@ const {
     connectToOrganization,
     getMyOrganization,
     updateCodeFormat,
+    updateFormSchema,
     createCycle,
     createManagedResident,
     bulkUploadResidents
@@ -16,6 +17,7 @@ router.post('/connect', authenticate, connectToOrganization)
 // Admin-only CRM actions
 router.get('/me', authenticate, authorize('admin'), getMyOrganization)
 router.put('/code-format', authenticate, authorize('admin'), updateCodeFormat)
+router.put('/form-schema', authenticate, authorize('admin'), updateFormSchema)
 router.post('/cycles', authenticate, authorize('admin'), createCycle)
 router.post('/residents', authenticate, authorize('admin'), createManagedResident)
 router.post('/residents/bulk', authenticate, authorize('admin'), bulkUploadResidents)

@@ -1,25 +1,25 @@
-import React, { useRef } from 'react'
+import React from 'react'
 import { useFormik } from 'formik'
 import * as Yup from 'yup'
 import { Icon } from '@iconify/react'
-import { useGSAP } from '@gsap/react'
-import gsap from 'gsap'
 
 import Banner from '../ui/Banner'
 import Button from '../ui/Button'
 import InputField from '../InputField'
 import api from '../../api/axios'
+import ResidentTabShell from './resident/ResidentTabShell'
+import CountdownHero from './resident/CountdownHero'
+import ProviderStatusCard from './resident/ProviderStatusCard'
+import PersonalScheduleCard from './resident/PersonalScheduleCard'
+import HowItWorks from './resident/HowItWorks'
 
 /**
  * Solo Resident View — user is not linked to a provider.
- * Shows a slide-down warning banner + a Connect (Business ID) form.
+ * Tabbed layout: Overview (connect + countdown + solo status), Personal Schedule,
+ * and How It Works. Header quick-actions (push + guide) live in the tab shell.
  */
-const SoloResidentView = ({ user, onConnected, notify, errorNotify }) => {
-  const cardRef = useRef(null)
-
-  useGSAP(() => {
-    gsap.from(cardRef.current, { autoAlpha: 0, y: 30, duration: 0.6, ease: 'power3.out', delay: 0.15 })
-  }, [])
+const SoloResidentView = ({ user, onConnected, onRefresh, notify, errorNotify }) => {
+  const personalDates = user?.personal_schedule?.pickup_dates || []
 
   const formik = useFormik({
     initialValues: { business_id: '' },
@@ -39,39 +39,69 @@ const SoloResidentView = ({ user, onConnected, notify, errorNotify }) => {
     }
   })
 
-  return (
-    <div className="space-y-6">
-      <Banner tone="warning" title="Your provider is not connected">
-        Link your account to a waste management provider using their unique Business ID to start receiving pickup schedules and reminders.
-      </Banner>
-
-      <div ref={cardRef} className="rounded-3xl bg-white/90 border border-tertiary/40 shadow-[0_24px_70px_-40px_rgba(120,53,15,0.6)] p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-5">
-          <div className="p-3 rounded-2xl bg-primary/30">
-            <Icon icon="mdi:link-variant" width="26" height="26" className="text-secondary" />
-          </div>
-          <div>
-            <h3 className="text-xl font-extrabold text-secondary">Connect to a Provider</h3>
-            <p className="text-sm text-[#5b4a3a]/70">Ask your provider for their TossSync Business ID (e.g. TS-9K3ABC).</p>
-          </div>
+  const connectCard = (
+    <div className="rounded-3xl border border-tertiary/40 bg-white/90 p-6 shadow-[0_24px_70px_-40px_rgba(120,53,15,0.6)] sm:p-8">
+      <div className="mb-5 flex items-center gap-3">
+        <div className="rounded-2xl bg-primary/30 p-3">
+          <Icon icon="mdi:link-variant" width="26" height="26" className="text-secondary" />
         </div>
-
-        <form onSubmit={formik.handleSubmit} className="flex flex-col sm:flex-row gap-3 sm:items-start">
-          <div className="flex-1">
-            <InputField type="text" name="business_id" placeholder="Enter Business ID" formik={formik} />
-          </div>
-          <Button type="submit" variant="primary" disabled={formik.isSubmitting} className="sm:w-auto">
-            <Icon icon="mdi:link-plus" width="20" height="20" />
-            {formik.isSubmitting ? 'Connecting...' : 'Connect'}
-          </Button>
-        </form>
+        <div>
+          <h3 className="text-xl font-extrabold text-secondary">Connect to a Provider</h3>
+          <p className="text-sm text-[#5b4a3a]/70">Ask your provider for their TossSync Business ID (e.g. TS-9K3ABC).</p>
+        </div>
       </div>
 
-      <div className="rounded-3xl bg-primary/20 border border-primary/40 p-6 sm:p-8">
-        <h4 className="font-bold text-secondary mb-2">Meanwhile, you're in Solo Mode</h4>
-        <p className="text-sm text-[#5b4a3a]/80">You can still use TossSync independently. Once connected, your provider's official pickup cycle will appear here automatically.</p>
-      </div>
+      <form onSubmit={formik.handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div className="flex-1">
+          <InputField type="text" name="business_id" placeholder="Enter Business ID" formik={formik} />
+        </div>
+        <Button type="submit" variant="primary" disabled={formik.isSubmitting} className="sm:w-auto">
+          <Icon icon="mdi:link-plus" width="20" height="20" />
+          {formik.isSubmitting ? 'Connecting...' : 'Connect'}
+        </Button>
+      </form>
     </div>
+  )
+
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: 'mdi:view-dashboard-outline',
+      content: (
+        <div className="flex flex-col gap-6">
+          <Banner tone="warning" title="Your provider is not connected">
+            Link your account to a waste management provider using their unique Business ID to start receiving pickup schedules and reminders.
+          </Banner>
+          {connectCard}
+          <CountdownHero providerNext={null} personalDates={personalDates} />
+          <ProviderStatusCard connected={false} />
+        </div>
+      )
+    },
+    {
+      id: 'personal',
+      label: 'Personal Schedule',
+      icon: 'mdi:calendar-account-outline',
+      content: (
+        <PersonalScheduleCard
+          user={user}
+          onUpdate={onRefresh}
+          notify={notify}
+          errorNotify={errorNotify}
+        />
+      )
+    },
+    {
+      id: 'guide',
+      label: 'How It Works',
+      icon: 'mdi:book-open-variant',
+      content: <HowItWorks />
+    }
+  ]
+
+  return (
+    <ResidentTabShell tabs={tabs} notify={notify} errorNotify={errorNotify} />
   )
 }
 

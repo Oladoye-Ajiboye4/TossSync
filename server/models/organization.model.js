@@ -24,6 +24,13 @@ const organizationSchema = new mongoose.Schema({
         custom_dates: [Date],
         description: { type: String }
     }],
+    resident_form_schema: [{
+        id: { type: String, required: true },
+        label: { type: String, required: true },
+        type: { type: String, enum: ['text', 'email', 'tel', 'number', 'textarea'], default: 'text' },
+        required: { type: Boolean, default: false },
+        placeholder: { type: String }
+    }],
     connected_residents: [{ 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'User' 

@@ -3,13 +3,15 @@ const router = express.Router()
 const {
     getMySchedule,
     assignSchedule,
-    reportMissedPickup
+    reportMissedPickup,
+    updatePersonalSchedule
 } = require('../controllers/schedule.controller')
 const { authenticate, authorize } = require('../middlewares/auth.middleware')
 
 // Resident actions
 router.get('/me', authenticate, getMySchedule)
 router.post('/missed', authenticate, reportMissedPickup)
+router.put('/personal', authenticate, updatePersonalSchedule)
 
 // Admin action: assign a schedule to a resident
 router.post('/assign', authenticate, authorize('admin'), assignSchedule)

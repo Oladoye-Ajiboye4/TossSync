@@ -106,6 +106,11 @@ const Dashboard = () => {
     loadDashboard()
   }
 
+  // Called by resident components after personal schedule updates.
+  const handleRefresh = () => {
+    loadDashboard()
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen w-full bg-background flex items-center justify-center">
@@ -128,6 +133,7 @@ const Dashboard = () => {
         <ManagedResidentView
           user={user}
           schedule={schedule}
+          onRefresh={handleRefresh}
           notify={notify}
           errorNotify={errorNotify}
         />
@@ -137,6 +143,7 @@ const Dashboard = () => {
       <SoloResidentView
         user={user}
         onConnected={handleConnected}
+        onRefresh={handleRefresh}
         notify={notify}
         errorNotify={errorNotify}
       />

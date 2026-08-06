@@ -52,7 +52,8 @@ const connectToOrganization = async (req, res) => {
 const getMyOrganization = async (req, res) => {
     try {
         const organization = await Organization.findOne({ admin_id: req.user._id })
-            .populate('connected_residents', 'username email registration_code provider_status createdAt')
+            .populate('connected_residents', 'username email area registration_code provider_status createdAt')
+
         if (!organization) {
             return res.status(404).json({ message: 'Organization not found' })
         }
@@ -183,6 +184,35 @@ const createManagedResident = async (req, res) => {
 }
 
 /**
+ * UPDATE FORM SCHEMA — Admin configures custom registration fields.
+ * Requires: authenticate + authorize('admin'). Body: { resident_form_schema: [{ id, label, type, required, placeholder }] }
+ */
+const updateFormSchema = async (req, res) => {
+    try {
+        const { resident_form_schema } = req.body
+        if (!Array.isArray(resident_form_schema)) {
+            return res.status(400).json({ message: 'resident_form_schema must be an array' })
+        }
+
+        const organization = await Organization.findOne({ admin_id: req.user._id })
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' })
+        }
+
+        organization.resident_form_schema = resident_form_schema
+        await organization.save()
+
+        return res.status(200).json({ 
+            message: 'Registration form schema updated', 
+            resident_form_schema: organization.resident_form_schema 
+        })
+    } catch (err) {
+        console.error('Update form schema error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
  * BULK UPLOAD — Admin uploads CSV/Excel-parsed residents.
  * Requires: authenticate + authorize('admin'). Body: { residents: [{ username, email }] }
  * NOTE: File parsing (multer + csv/xlsx) is stubbed on the route; this accepts a parsed array.
@@ -261,6 +291,7 @@ module.exports = {
     connectToOrganization,
     getMyOrganization,
     updateCodeFormat,
+    updateFormSchema,
     createCycle,
     createManagedResident,
     bulkUploadResidents
