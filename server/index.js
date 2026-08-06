@@ -14,7 +14,7 @@ const pushRoutes = require('./routes/push.routes')
 const app = express()
 
 // Allowed frontend origins (Vite dev server may use 5173 or fall back to 5174, etc.)
-const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173,http://localhost:5174')
+const allowedOrigins = (process.env.APP_URL || 'http://localhost:5173,http://localhost:5174,https://toss-sync.vercel.app/')
     .split(',')
     .map((o) => o.trim())
 
