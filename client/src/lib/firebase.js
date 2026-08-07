@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getAuth, GoogleAuthProvider, GithubAuthProvider } from 'firebase/auth'
+import { getAuth, GoogleAuthProvider, GithubAuthProvider, useDeviceLanguage } from 'firebase/auth'
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_API_KEY,
@@ -14,7 +14,7 @@ const firebaseConfig = {
 // Initialize Firebase once and share across the app
 const app = initializeApp(firebaseConfig)
 const auth = getAuth(app)
-auth.useDeviceLanguage()
+useDeviceLanguage(auth)
 
 const googleProvider = new GoogleAuthProvider()
 const githubProvider = new GithubAuthProvider()
