@@ -32,16 +32,20 @@ const createTransporter = () => {
 
 /**
  * Generic send wrapper. Returns a promise so callers can await it.
- * @param {{to: string|string[], subject: string, html: string}} options
+ * `from` / `replyTo` are optional overrides — when omitted we fall back to the
+ * default TossSync identity. This lets pickup reminders be sent *on behalf of*
+ * the resident's provider (dynamic From) while replies route to the admin.
+ * @param {{to: string|string[], subject: string, html: string, from?: string, replyTo?: string}} options
  * @returns {Promise<any>}
  */
-const sendMail = ({ to, subject, html }) => {
+const sendMail = ({ to, subject, html, from, replyTo }) => {
     const transporter = createTransporter()
     const mailOptions = {
-        from: `"TossSync Team" <${process.env.EMAIL_USER || 'oladoyeajiboye@gmail.com'}>`,
+        from: from || `"TossSync Team" <${process.env.EMAIL_USER || 'oladoyeajiboye@gmail.com'}>`,
         to,
         subject,
-        html
+        html,
+        ...(replyTo ? { replyTo } : {})
     }
     return transporter.sendMail(mailOptions)
 }
@@ -126,10 +130,20 @@ const sendRegistrationCodeEmail = ({ to, username, registrationCode, organizatio
 
 /**
  * (B) Send a pickup reminder email.
- * @param {{to: string, username: string, pickupDate: Date, cycleName?: string}} params
+ * When `adminOrgName` is provided the email is sent *on behalf of* the provider
+ * (dynamic From identity) and `adminEmail` is wired as Reply-To so resident
+ * replies land in the admin's inbox rather than the shared TossSync mailbox.
+ * @param {{
+ *   to: string,
+ *   username: string,
+ *   pickupDate: Date,
+ *   cycleName?: string,
+ *   adminOrgName?: string,
+ *   adminEmail?: string
+ * }} params
  * @returns {Promise<any>}
  */
-const sendPickupReminderEmail = ({ to, username, pickupDate, cycleName }) => {
+const sendPickupReminderEmail = ({ to, username, pickupDate, cycleName, adminOrgName, adminEmail }) => {
     const dateStr = new Date(pickupDate).toLocaleDateString(undefined, {
         weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     })
@@ -147,17 +161,52 @@ const sendPickupReminderEmail = ({ to, username, pickupDate, cycleName }) => {
             </p>
         </div>
     `
+    // Dynamically brand the sender as the resident's provider when known.
+    const from = adminOrgName ? `"${adminOrgName}" <noreply@tosssync.com>` : undefined
     return sendMail({
         to,
         subject: `♻️ Pickup Reminder — ${dateStr}`,
-        html: layout('Pickup Reminder', 'Your next collection is coming up', body)
+        html: layout('Pickup Reminder', 'Your next collection is coming up', body),
+        from,
+        replyTo: adminEmail
     })
 }
+
+/**
+ * (C) Fan out a single pickup reminder to an entire resident array at once.
+ * Zero-Loop Rule: the resident list is `.filter()`-ed then `.map()`-ped straight
+ * into a Promise array and awaited together with `Promise.all` — no imperative
+ * iteration. Every email inherits the same dynamic provider From / Reply-To.
+ * @param {{
+ *   residents: Array<{ email: string, username?: string }>,
+ *   pickupDate: Date,
+ *   cycleName?: string,
+ *   adminOrgName?: string,
+ *   adminEmail?: string
+ * }} params
+ * @returns {Promise<any[]>} resolves once every reminder has been dispatched
+ */
+const sendPickupReminderBatch = ({ residents = [], pickupDate, cycleName, adminOrgName, adminEmail }) =>
+    Promise.all(
+        residents
+            .filter((resident) => resident && resident.email)
+            .map((resident) =>
+                sendPickupReminderEmail({
+                    to: resident.email,
+                    username: resident.username || 'Resident',
+                    pickupDate,
+                    cycleName,
+                    adminOrgName,
+                    adminEmail
+                })
+            )
+    )
 
 module.exports = {
     createTransporter,
     sendMail,
     sendRegistrationCodeEmail,
     sendPickupReminderEmail,
+    sendPickupReminderBatch,
     THEME
 }

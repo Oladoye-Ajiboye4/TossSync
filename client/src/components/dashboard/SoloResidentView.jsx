@@ -9,6 +9,7 @@ import InputField from '../InputField'
 import api from '../../api/axios'
 import ResidentTabShell from './resident/ResidentTabShell'
 import CountdownHero from './resident/CountdownHero'
+import CalendarSyncCard from './resident/CalendarSyncCard'
 import ProviderStatusCard from './resident/ProviderStatusCard'
 import PersonalScheduleCard from './resident/PersonalScheduleCard'
 import HowItWorks from './resident/HowItWorks'
@@ -20,6 +21,13 @@ import HowItWorks from './resident/HowItWorks'
  */
 const SoloResidentView = ({ user, onConnected, onRefresh, notify, errorNotify }) => {
   const personalDates = user?.personal_schedule?.pickup_dates || []
+
+  // Next upcoming personal reminder — pure array pipeline (Zero-Loop Rule).
+  const nextPersonalDate =
+    personalDates
+      .map((d) => new Date(d))
+      .filter((d) => !Number.isNaN(d.getTime()) && d.getTime() > Date.now())
+      .sort((a, b) => a.getTime() - b.getTime())[0] || null
 
   const formik = useFormik({
     initialValues: { business_id: '' },
@@ -76,6 +84,7 @@ const SoloResidentView = ({ user, onConnected, onRefresh, notify, errorNotify })
           {connectCard}
           <CountdownHero providerNext={null} personalDates={personalDates} />
           <ProviderStatusCard connected={false} />
+          <CalendarSyncCard nextPickup={nextPersonalDate} providerName="Personal Reminder" />
         </div>
       )
     },

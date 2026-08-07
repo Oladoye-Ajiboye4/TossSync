@@ -212,3 +212,38 @@ export const nextPickupFromSchedule = (schedule) => {
   if (days.length === 0) return null
   return getNextPickupDate(days, cycle.pickup_time || schedule.pickup_time)
 }
+
+/**
+ * Format a Date as Google Calendar's UTC timestamp: "YYYYMMDDTHHmmssZ".
+ * `toISOString()` is always UTC ("2026-08-08T10:00:00.000Z"); we then strip the
+ * separators and milliseconds to land on the exact shape Calendar expects.
+ */
+export const toCalendarUTC = (date) => {
+  if (!date) return null
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toISOString().replace(/[-:]|\.\d{3}/g, '')
+}
+
+// Encode a query value the "application/x-www-form-urlencoded" way (spaces → +),
+// matching the `Waste+Pickup+-+Provider` shape while still escaping specials.
+const encodePlus = (value) => encodeURIComponent(value).replace(/%20/g, '+')
+
+/**
+ * Build a Google Calendar "add event" template URL for a pickup reminder.
+ * The event runs for `durationMinutes` (default 60) starting at `date`, giving
+ * the resident an offline alarm baked into their own device's calendar.
+ *
+ * @param {{date: Date|string, providerName?: string, durationMinutes?: number}} params
+ * @returns {string|null} the render URL, or null when the date is invalid
+ */
+export const buildGoogleCalendarUrl = ({ date, providerName = 'Your Provider', durationMinutes = 60 }) => {
+  const start = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(start.getTime())) return null
+  const end = new Date(start.getTime() + durationMinutes * 60 * 1000)
+  const startUTC = toCalendarUTC(start)
+  const endUTC = toCalendarUTC(end)
+  const text = encodePlus(`Waste Pickup - ${providerName}`)
+  const details = encodePlus('TossSync Automated Reminder')
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&details=${details}&dates=${startUTC}/${endUTC}`
+}

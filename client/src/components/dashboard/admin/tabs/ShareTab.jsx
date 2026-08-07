@@ -10,8 +10,11 @@ const ShareTab = ({ organization, notify, errorNotify }) => {
   const qrWrapRef = useRef(null)
 
   const inviteUrl = useMemo(() => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : ''
-    return `${origin}/register?ref=${organization.business_id}`
+    // Prefer the configured production URL, fall back to the current origin.
+    const baseUrl =
+      import.meta.env.VITE_APP_URL ||
+      (typeof window !== 'undefined' ? window.location.origin : '')
+    return `${baseUrl}/signup?ref=${organization.business_id}`
   }, [organization.business_id])
 
   const { contextSafe } = useGSAP({ scope: toastRef })

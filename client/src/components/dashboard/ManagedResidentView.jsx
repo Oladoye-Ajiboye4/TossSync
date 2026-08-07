@@ -3,6 +3,7 @@ import React from 'react'
 import { nextPickupFromSchedule } from '../../lib/cycleTime'
 import ResidentTabShell from './resident/ResidentTabShell'
 import CountdownHero from './resident/CountdownHero'
+import CalendarSyncCard from './resident/CalendarSyncCard'
 import ProviderStatusCard from './resident/ProviderStatusCard'
 import HybridCycleToggle from './resident/HybridCycleToggle'
 import PersonalScheduleCard from './resident/PersonalScheduleCard'
@@ -34,6 +35,7 @@ const ManagedResidentView = ({ user, schedule, onRefresh, notify, errorNotify })
             cycleName={cycleName}
             nextPickup={providerNext}
           />
+          <CalendarSyncCard nextPickup={providerNext} providerName={orgName} />
           <MissedPickupDrawer notify={notify} errorNotify={errorNotify} />
         </div>
       )
