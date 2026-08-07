@@ -297,6 +297,7 @@ const getDashboard = async (req, res) => {
 module.exports = {
     signup,
     signin,
+    socialAuth,
     forgotPassword,
     resetPassword,
     getDashboard,
