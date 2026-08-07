@@ -387,8 +387,7 @@ const Invite = () => {
                         <button
                             type="submit"
                             disabled={submitting}
-                            data-invite-reveal
-                            className="mt-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-6 text-base font-bold text-white shadow-xl shadow-secondary/20 transition hover:scale-105 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 md:text-lg"
+                            className="mt-2 inline-flex w-full min-h-12 items-center justify-center gap-2 rounded-2xl bg-secondary px-6 text-base font-bold text-white shadow-xl shadow-secondary/20 transition-transform hover:scale-105 hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60 md:text-lg"
                         >
                             {submitting ? (
                                 <>
