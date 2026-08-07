@@ -3,6 +3,7 @@ const router = express.Router()
 const {
     signup,
     signin,
+    socialAuth,
     forgotPassword,
     resetPassword,
     getDashboard
@@ -12,6 +13,7 @@ const { authenticate } = require('../middlewares/auth.middleware')
 // Public auth routes
 router.post('/signup', signup)          // resident (solo) or admin signup
 router.post('/signin', signin)          // dual-mode: email/password OR registration_code
+router.post('/social', socialAuth)      // Firebase Google/GitHub exchange
 router.post('/forgot-password', forgotPassword)
 router.post('/reset-password', resetPassword)
 
