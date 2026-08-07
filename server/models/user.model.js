@@ -33,6 +33,15 @@ const userSchema = new mongoose.Schema({
         default: null
     },
 
+    // Dynamic answers to an organization's custom registration fields.
+    // Keyed by the field's human-readable label (e.g. { 'Gate Code': '4821' }).
+    // Populated when a resident onboards through the custom /invite route.
+    custom_fields: {
+        type: Map,
+        of: String,
+        default: {}
+    },
+
     // Resident-owned autonomous schedule + reminder settings (Feature A/B)
     personal_schedule: {
         enabled: { type: Boolean, default: false },

@@ -2,6 +2,8 @@ const express = require('express')
 const router = express.Router()
 const {
     connectToOrganization,
+    getPublicOrganization,
+    joinOrganization,
     getMyOrganization,
     updateCodeFormat,
     updateFormSchema,
@@ -14,6 +16,12 @@ const {
     disconnectResident
 } = require('../controllers/organization.controller')
 const { authenticate, authorize } = require('../middlewares/auth.middleware')
+
+// ── Public self-service onboarding (powers the /invite route) ──────────────
+// Fetch an org's name + custom registration fields by business_id (no auth)
+router.get('/public/:business_id', getPublicOrganization)
+// Create a linked resident from the custom invite form (no auth)
+router.post('/join', joinOrganization)
 
 // Resident action: link a solo account to an org via business_id
 router.post('/connect', authenticate, connectToOrganization)

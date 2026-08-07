@@ -7,8 +7,10 @@ import Homepage from './pages/homepage/Homepage.jsx';
 import Signup from './pages/auth/signup/Signup.jsx';
 import Signin from './pages/auth/signin/Signin.jsx';
 import Dashboard from './pages/dashboard/Dashboard.jsx';
+import Invite from './pages/invite/Invite.jsx';
 import ForgotPassword from './pages/auth/forgotPassword/ForgotPassword.jsx';
 import ResetPassword from './pages/auth/resetPassword/ResetPassword.jsx';
+
 
 const router = createBrowserRouter([
   {
@@ -28,9 +30,20 @@ const router = createBrowserRouter([
     element: <Dashboard />,
   },
   {
+    // Dedicated self-service resident onboarding via a provider's custom invite link.
+    path: "/invite",
+    element: <Invite />,
+  },
+  {
+    // Friendly alias so both /invite?ref= and /join?ref= resolve to the same flow.
+    path: "/join",
+    element: <Invite />,
+  },
+  {
     path: "/forgot-password",
     element: <ForgotPassword />,
   },
+
   {
     path: "/reset-password",
     element: <ResetPassword />,

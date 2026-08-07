@@ -4,6 +4,7 @@ const Schedule = require('../models/schedule.model')
 const bcrypt = require('bcryptjs')
 const { generateRegistrationCode } = require('../utils/codeGenerator')
 const { sendRegistrationCodeEmail } = require('../utils/emailService')
+const { signToken, publicUser } = require('./auth.controller')
 
 
 /**
@@ -43,6 +44,146 @@ const connectToOrganization = async (req, res) => {
         })
     } catch (err) {
         console.error('Connect error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
+ * GET PUBLIC ORGANIZATION — Public lookup of an org's branding + custom
+ * registration fields via its business_id. Powers the self-service /invite
+ * onboarding route. No auth required; only non-sensitive fields are exposed.
+ * Params: :business_id
+ */
+const getPublicOrganization = async (req, res) => {
+    try {
+        const business_id = String(req.params.business_id || '').trim()
+        if (!business_id) {
+            return res.status(400).json({ message: 'Business ID is required' })
+        }
+
+        const organization = await Organization.findOne({ business_id })
+            .select('name business_id resident_form_schema')
+            .lean()
+
+        if (!organization) {
+            return res.status(404).json({ message: 'No organization found with that Business ID' })
+        }
+
+        // Only surface the safe, public-facing subset of each custom field.
+        const fields = (organization.resident_form_schema || []).map((field) => ({
+            id: field.id,
+            label: field.label,
+            type: field.type || 'text',
+            required: Boolean(field.required),
+            placeholder: field.placeholder || ''
+        }))
+
+        return res.status(200).json({
+            status: true,
+            organization: {
+                name: organization.name,
+                business_id: organization.business_id,
+                resident_form_schema: fields
+            }
+        })
+    } catch (err) {
+        console.error('Get public organization error:', err)
+        return res.status(500).json({ message: 'Internal server error' })
+    }
+}
+
+/**
+ * JOIN ORGANIZATION — Public self-service resident onboarding via /invite.
+ * Creates a brand-new resident, links them to the org identified by business_id,
+ * and persists their answers to the org's custom fields. Returns a signed JWT so
+ * the resident lands straight in their dashboard.
+ * Body: { username, email, password, business_id, custom_fields?: { [label]: value } }
+ */
+const joinOrganization = async (req, res) => {
+    try {
+        const { username, email, password, business_id, custom_fields } = req.body
+
+        if (!username || !email || !password) {
+            return res.status(400).json({ message: 'Username, email and password are required' })
+        }
+        if (!business_id) {
+            return res.status(400).json({ message: 'A valid invite link (Business ID) is required' })
+        }
+
+        const organization = await Organization.findOne({ business_id })
+        if (!organization) {
+            return res.status(404).json({ message: 'No organization found with that Business ID' })
+        }
+
+        const existingUser = await User.findOne({ email })
+        if (existingUser) {
+            return res.status(400).json({ message: 'A user with this email already exists' })
+        }
+
+        // Keep only answers that map to a real field defined by this org, keyed by
+        // label (zero-loop: reduce over the schema). Enforces required fields too.
+        const schema = organization.resident_form_schema || []
+        const answers = custom_fields && typeof custom_fields === 'object' ? custom_fields : {}
+        const missingRequired = schema
+            .filter((field) => field.required)
+            .filter((field) => !String(answers[field.label] ?? '').trim())
+            .map((field) => field.label)
+
+        if (missingRequired.length > 0) {
+            return res.status(400).json({
+                message: `Please complete the required field(s): ${missingRequired.join(', ')}`
+            })
+        }
+
+        const cleanCustomFields = schema.reduce((acc, field) => {
+            const value = answers[field.label]
+            if (value !== undefined && String(value).trim() !== '') {
+                acc[field.label] = String(value).trim()
+            }
+            return acc
+        }, {})
+
+        // Generate a unique registration_code respecting the org's format.
+        let registration_code
+        let attempts = 0
+        do {
+            registration_code = generateRegistrationCode(organization.code_format)
+            attempts++
+        } while (await User.findOne({ registration_code }) && attempts < 10)
+
+        const hashedPassword = bcrypt.hashSync(password, bcrypt.genSaltSync(10))
+
+        // Some orgs collect a dedicated "Area" field — mirror it onto the first-class
+        // `area` column so existing CRM views keep working.
+        const areaAnswer = Object.keys(cleanCustomFields)
+            .filter((label) => label.trim().toLowerCase() === 'area')
+            .map((label) => cleanCustomFields[label])[0]
+
+        const resident = new User({
+            username,
+            email,
+            password: hashedPassword,
+            role: 'resident',
+            provider_status: 'linked',
+            organization_id: organization._id,
+            business_id: organization.business_id,
+            registration_code,
+            custom_fields: cleanCustomFields,
+            area: areaAnswer || null
+        })
+        await resident.save()
+
+        organization.connected_residents.push(resident._id)
+        await organization.save()
+
+        const token = signToken(resident)
+        return res.status(201).json({
+            message: `Welcome to ${organization.name}!`,
+            user: publicUser(resident, token),
+            organization: { id: organization._id, name: organization.name, business_id }
+        })
+    } catch (err) {
+        console.error('Join organization error:', err)
         return res.status(500).json({ message: 'Internal server error' })
     }
 }
@@ -507,6 +648,8 @@ const disconnectResident = async (req, res) => {
 
 module.exports = {
     connectToOrganization,
+    getPublicOrganization,
+    joinOrganization,
     getMyOrganization,
     updateCodeFormat,
     updateFormSchema,

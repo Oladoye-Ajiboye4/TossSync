@@ -8,14 +8,12 @@ const ShareTab = ({ organization, notify, errorNotify }) => {
   const [copied, setCopied] = useState(false)
   const toastRef = useRef(null)
   const qrWrapRef = useRef(null)
+  const businessId = organization?.business_id || ''
 
   const inviteUrl = useMemo(() => {
-    // Prefer the configured production URL, fall back to the current origin.
-    const baseUrl =
-      import.meta.env.VITE_APP_URL ||
-      (typeof window !== 'undefined' ? window.location.origin : '')
-    return `${baseUrl}/signup?ref=${organization.business_id}`
-  }, [organization.business_id])
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${origin}/invite?ref=${businessId}`
+  }, [businessId])
 
   const { contextSafe } = useGSAP({ scope: toastRef })
 
@@ -57,29 +55,29 @@ const ShareTab = ({ organization, notify, errorNotify }) => {
     <div className="relative flex flex-col gap-6 lg:grid lg:grid-cols-2">
       <section className="flex flex-col gap-4 rounded-2xl border border-tertiary/40 bg-white p-5 shadow-sm">
         <div>
-          <h3 className="text-base font-bold text-[#5b4a3a]">Share &amp; Onboard</h3>
-          <p className="mt-1 text-sm text-secondary/70">Invite residents with your unique link.</p>
+          <h3 className="text-base md:text-lg font-bold text-[#5b4a3a]">Share &amp; Onboard</h3>
+          <p className="mt-1 text-sm md:text-base text-secondary/70">Invite residents with your unique link.</p>
         </div>
 
         <div className="rounded-xl bg-primary/20 p-4 text-center">
-          <p className="text-xs font-semibold uppercase tracking-wide text-secondary/60">Business ID</p>
-          <p className="mt-1 font-mono text-2xl font-extrabold tracking-wider text-secondary">{organization.business_id}</p>
+          <p className="text-xs md:text-sm font-semibold uppercase tracking-wide text-secondary/60">Business ID</p>
+          <p className="mt-1 font-mono text-2xl md:text-3xl font-extrabold tracking-wider text-secondary">{businessId}</p>
         </div>
 
         <div>
-          <label htmlFor="invite-url" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary/60">Invite Link</label>
+          <label htmlFor="invite-url" className="mb-1 block text-xs md:text-sm font-semibold uppercase tracking-wide text-secondary/60">Invite Link</label>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
               id="invite-url"
               type="text"
               readOnly
               value={inviteUrl}
-              className="min-h-11 min-w-0 flex-1 rounded-xl border border-tertiary/50 bg-background/40 px-3 text-sm text-[#5b4a3a] outline-none"
+              className="min-h-11 min-w-0 flex-1 rounded-xl border border-tertiary/50 bg-background/40 px-3 text-sm md:text-base text-[#5b4a3a] outline-none"
             />
             <button
               type="button"
               onClick={handleCopy}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm font-bold text-white hover:bg-secondary/90"
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-secondary px-4 text-sm md:text-base font-bold text-white hover:bg-secondary/90 hover:scale-105 transition-transform"
             >
               <Icon icon={copied ? 'mdi:check' : 'mdi:content-copy'} width="20" height="20" aria-hidden="true" />
               {copied ? 'Copied' : 'Copy Link'}
@@ -89,7 +87,7 @@ const ShareTab = ({ organization, notify, errorNotify }) => {
       </section>
 
       <section className="flex flex-col items-center gap-4 rounded-2xl border border-tertiary/40 bg-white p-5 shadow-sm">
-        <h3 className="text-base font-bold text-[#5b4a3a]">Neighborhood QR Poster</h3>
+        <h3 className="text-base md:text-lg font-bold text-[#5b4a3a]">Neighborhood QR Poster</h3>
         <div ref={qrWrapRef} className="rounded-2xl border border-tertiary/30 bg-white p-4">
           <QRCodeCanvas
             value={inviteUrl}
@@ -103,7 +101,7 @@ const ShareTab = ({ organization, notify, errorNotify }) => {
         <button
           type="button"
           onClick={handleDownloadPoster}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-secondary px-4 text-sm font-bold text-secondary hover:bg-secondary/10"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-secondary px-4 text-sm md:text-base font-bold text-secondary hover:bg-secondary/10 hover:scale-105 transition-transform"
         >
           <Icon icon="mdi:download" width="20" height="20" aria-hidden="true" />
           Download Poster
