@@ -160,9 +160,9 @@ const FormBuilderTab = ({ organization, onRefresh, notify, errorNotify }) => {
       </section>
 
       <section>
-        <div className="sticky top-24 mx-auto max-w-xs rounded-[2rem] border-8 border-[#5b4a3a] bg-background p-4 shadow-xl">
+        <div className="sticky top-24 mx-auto max-w-xs rounded-4xl border-8 border-[#5b4a3a] bg-background p-4 shadow-xl">
           <p className="mb-3 text-center text-xs font-semibold uppercase tracking-wide text-secondary/60">Live Resident Preview</p>
-          <div ref={previewRef} className="flex flex-col gap-3">
+          {/* <div ref={previewRef} className="flex flex-col gap-3">
             <div data-preview-field>
               <label className="mb-1 block text-xs font-semibold text-[#5b4a3a]">Full Name <span className="text-red-500">*</span></label>
               <div className="min-h-11 rounded-lg border border-tertiary/50 bg-white px-3 py-2 text-sm text-tertiary">Jane Resident</div>
@@ -180,7 +180,7 @@ const FormBuilderTab = ({ organization, onRefresh, notify, errorNotify }) => {
               </div>
             ))}
             <div className="mt-1 min-h-11 rounded-lg bg-secondary px-3 py-2 text-center text-sm font-bold text-white">Sign Up</div>
-          </div>
+          </div> */}
         </div>
       </section>
     </div>

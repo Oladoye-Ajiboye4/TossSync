@@ -98,9 +98,9 @@ Create a `.env` file in **each** package (`server/.env` and `client/.env`).
 |----------|:--------:|-------------|----------------|
 | `URI` | ✅ | MongoDB connection string | — |
 | `PORT` | ❌ | Port the API listens on | `7890` |
-| `APP_URL` | ❌ | Comma-separated allowed frontend origins (also used in email links) | `http://localhost:5173,http://localhost:5174,https://toss-sync.vercel.app/` |
+| `APP_URL` | ❌ | Comma-separated allowed frontend origins (also used in email links) | `http://localhost:5173` |
 | `JWT_SECRET` | ✅ | Secret used to sign/verify JWTs | — |
-| `EMAIL_USER` | ❌ | Gmail address used as the sender | `oladoyeajiboye@gmail.com` |
+| `EMAIL_USER` | ❌ | Gmail address used as the sender | `'` |
 | `GOOGLE_APP_PASSWORD` | ✅ | Gmail App Password for Nodemailer | — |
 | `VAPID_PUBLIC_KEY` | ⚠️ | Web Push VAPID public key (push disabled if unset) | `''` |
 | `VAPID_PRIVATE_KEY` | ⚠️ | Web Push VAPID private key (push disabled if unset) | `''` |
