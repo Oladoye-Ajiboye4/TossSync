@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useMemo } from 'react'
 import { Icon } from '@iconify/react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
@@ -27,8 +27,13 @@ const PersonalScheduleCard = ({ user, onUpdate, notify, errorNotify }) => {
   const [secondaryEmails, setSecondaryEmails] = useState(personal.secondary_emails || [])
   const [emailInput, setEmailInput] = useState('')
   const [saving, setSaving] = useState(false)
+  const [timezone, setTimezone] = useState(personal.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
+  const timeZones = useMemo(() => {
+    if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone')
+    return ['UTC']
+  }, [])
 
-  
+
   const formRef = useRef(null)
   const { contextSafe } = useGSAP({ scope: formRef })
 
@@ -87,8 +92,7 @@ const PersonalScheduleCard = ({ user, onUpdate, notify, errorNotify }) => {
   const handleSave = async () => {
     try {
       setSaving(true)
-      // Inject the resident's local IANA timezone so reminders fire accurately on Render.
-      const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+      // Use explicit resident-selected IANA timezone so reminders fire accurately on Render.
       const { data } = await api.put('/schedule/personal', {
         enabled,
         frequency,
@@ -186,6 +190,24 @@ const PersonalScheduleCard = ({ user, onUpdate, notify, errorNotify }) => {
             onValueChange={setPickupValue}
             onUnitChange={setPickupUnit}
           />
+        </div>
+
+        <div>
+          <label htmlFor="personal-timezone" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
+            Timezone
+          </label>
+          <input
+            id="personal-timezone"
+            list="tz-list-personal"
+            value={timezone}
+            onChange={(e) => setTimezone(e.target.value)}
+            className="min-h-11 w-full rounded-xl border border-tertiary/50 bg-background/40 px-3 text-sm text-[#5b4a3a] outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+          />
+          <datalist id="tz-list-personal">
+            {timeZones.map((tz) => (
+              <option key={tz} value={tz} />
+            ))}
+          </datalist>
         </div>
 
         <PushNotificationToggle notify={notify} errorNotify={errorNotify} />

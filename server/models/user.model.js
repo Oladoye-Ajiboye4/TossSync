@@ -4,29 +4,31 @@ const userSchema = new mongoose.Schema({
     username: { type: String, required: true },
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    role: { 
-        type: String, 
-        enum: ['resident', 'admin'], 
-        default: 'resident' 
+    role: {
+        type: String,
+        enum: ['resident', 'admin'],
+        default: 'resident'
     },
-    provider_status: { 
-        type: String, 
-        enum: ['solo', 'linked'], 
-        default: 'solo' 
+    provider_status: {
+        type: String,
+        enum: ['solo', 'linked'],
+        default: 'solo'
     },
-    organization_id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'Organization', 
-        default: null 
+    // User's IANA timezone (required). Defaulting to UTC for older accounts.
+    timezone: { type: String, required: true, default: 'UTC' },
+    organization_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Organization',
+        default: null
     },
-    registration_code: { 
+    registration_code: {
         type: String
         // No `default: null` — must remain undefined for users without a code
         // so the partial unique index below skips them (null is treated as a value).
     },
-    business_id: { 
-        type: String, 
-        default: null 
+    business_id: {
+        type: String,
+        default: null
     },
     area: {
         type: String,

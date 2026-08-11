@@ -3,11 +3,13 @@ const mongoose = require('mongoose')
 const organizationSchema = new mongoose.Schema({
     name: { type: String, required: true },
     business_id: { type: String, unique: true, required: true },
-    admin_id: { 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User', 
-        required: true 
+    admin_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
     },
+    // Organization's preferred IANA timezone for admin-entered schedule times
+    timezone: { type: String, required: true, default: 'UTC' },
     code_format: {
         prefix: { type: String, default: 'RES' },
         separator: { type: String, default: '-' },
@@ -15,10 +17,10 @@ const organizationSchema = new mongoose.Schema({
     },
     pickup_cycles: [{
         name: { type: String, required: true },
-        frequency: { 
-            type: String, 
-            enum: ['weekly', 'bi-weekly', 'monthly', 'custom'], 
-            required: true 
+        frequency: {
+            type: String,
+            enum: ['weekly', 'bi-weekly', 'monthly', 'custom'],
+            required: true
         },
         // Legacy single-day (kept in sync with days_of_week[0] for backward compatibility)
         day_of_week: { type: Number, min: 0, max: 6 }, // 0 = Sunday, 6 = Saturday
@@ -26,6 +28,8 @@ const organizationSchema = new mongoose.Schema({
         days_of_week: [{ type: Number, min: 0, max: 6 }],
         // Official pickup time stored as 24h "HH:mm"
         pickup_time: { type: String },
+        // Optional per-cycle timezone (IANA). If missing, organization.timezone is used.
+        timezone: { type: String },
         custom_dates: [Date],
         description: { type: String }
     }],
@@ -36,9 +40,9 @@ const organizationSchema = new mongoose.Schema({
         required: { type: Boolean, default: false },
         placeholder: { type: String }
     }],
-    connected_residents: [{ 
-        type: mongoose.Schema.Types.ObjectId, 
-        ref: 'User' 
+    connected_residents: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }],
     createdAt: { type: Date, default: Date.now }
 })

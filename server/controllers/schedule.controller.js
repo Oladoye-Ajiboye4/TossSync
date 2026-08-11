@@ -2,6 +2,7 @@ const Schedule = require('../models/schedule.model')
 const Organization = require('../models/organization.model')
 const User = require('../models/user.model')
 const { getNextPickupDate } = require('../utils/pickupDate')
+const { DateTime } = require('luxon')
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -134,9 +135,35 @@ const assignSchedule = async (req, res) => {
             ? pickup_dates.map((d) => new Date(d)).filter((d) => !Number.isNaN(d.getTime()))
             : []
         const nextFromDates = explicitDates.filter((d) => d >= new Date()).sort((a, b) => a - b)[0] || null
+        // Compute the next_pickup in UTC, interpreting the pickupTime in the
+        // cycle's timezone (cycle.timezone) or falling back to the organization's timezone.
+        const cycleTimezone = (cycle && cycle.timezone) || (organization.timezone) || 'UTC'
+
         const computedNext = next_pickup
             ? new Date(next_pickup)
-            : nextFromDates || (days.length > 0 ? getNextPickupDate(days, pickupTime) : null)
+            : nextFromDates || (days.length > 0 ? (function () {
+                // Use Luxon to compute the next occurrence in the admin zone, then return a JS Date (UTC instant).
+                const { hours, minutes } = (function () {
+                    const match = String(pickupTime || '').trim().match(/^(\d{1,2}):(\d{2})\s*([AaPp][Mm])?$/)
+                    if (!match) return { hours: 8, minutes: 0 }
+                    let hrs = Number(match[1])
+                    const mins = Number(match[2]) || 0
+                    const mer = match[3] ? match[3].toUpperCase() : null
+                    if (mer === 'AM') hrs = hrs === 12 ? 0 : hrs
+                    else if (mer === 'PM') hrs = hrs === 12 ? 12 : hrs + 12
+                    if (hrs < 0 || hrs > 23) hrs = 8
+                    return { hours: hrs, minutes: mins }
+                })();
+
+                const nowAdmin = DateTime.now().setZone(cycleTimezone)
+                const candidates = Array.from({ length: 14 }, (_, offset) =>
+                    nowAdmin.plus({ days: offset }).set({ hour: hours, minute: minutes, second: 0, millisecond: 0 })
+                ).filter((dt) => days.includes(dt.weekday % 7) && dt.toMillis() > nowAdmin.toMillis())
+                    .sort((a, b) => a.toMillis() - b.toMillis())
+
+                const nextAdminDT = candidates[0]
+                return nextAdminDT ? nextAdminDT.setZone('utc').toJSDate() : null
+            })() : null)
 
         let schedule = await Schedule.findOne({ resident_id, organization_id: organization._id })
         if (schedule) {

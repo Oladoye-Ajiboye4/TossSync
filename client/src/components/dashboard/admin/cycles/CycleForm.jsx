@@ -30,7 +30,15 @@ const CycleForm = ({ initial = null, submitting = false, submitLabel = 'Create O
   const [hour, setHour] = useState(seedTime.hour)
   const [minute, setMinute] = useState(seedTime.minute)
   const [meridiem, setMeridiem] = useState(seedTime.meridiem)
+  const [timezone, setTimezone] = useState(
+    initial?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+  )
   const [error, setError] = useState('')
+
+  const timeZones = useMemo(() => {
+    if (typeof Intl !== 'undefined' && Intl.supportedValuesOf) return Intl.supportedValuesOf('timeZone')
+    return ['UTC']
+  }, [])
 
   // Multi-select toggle: spread to add, .filter() to remove (never a loop).
   const toggleDay = (value) => {
@@ -68,7 +76,8 @@ const CycleForm = ({ initial = null, submitting = false, submitLabel = 'Create O
       name: name.trim(),
       frequency,
       days_of_week: days,
-      pickup_time: buildTime(hour || 12, minute || 0, meridiem)
+      pickup_time: buildTime(hour || 12, minute || 0, meridiem),
+      timezone
     })
   }
 
@@ -102,11 +111,10 @@ const CycleForm = ({ initial = null, submitting = false, submitLabel = 'Create O
                 type="button"
                 aria-pressed={active}
                 onClick={() => toggleDay(pill.value)}
-                className={`min-h-11 min-w-11 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${
-                  active
+                className={`min-h-11 min-w-11 shrink-0 rounded-full px-4 text-sm font-bold transition-colors ${active
                     ? 'bg-secondary text-white shadow-sm'
                     : 'bg-primary/20 text-secondary hover:bg-primary/35'
-                }`}
+                  }`}
               >
                 {pill.label}
               </button>
@@ -171,6 +179,24 @@ const CycleForm = ({ initial = null, submitting = false, submitLabel = 'Create O
             </button>
           </div>
         </div>
+      </div>
+
+      <div>
+        <label htmlFor="cycle-timezone" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-secondary/60">
+          Timezone
+        </label>
+        <input
+          id="cycle-timezone"
+          list="tz-list-admin"
+          value={timezone}
+          onChange={(e) => setTimezone(e.target.value)}
+          className="min-h-11 w-full rounded-xl border border-tertiary/50 bg-white px-3 text-sm text-[#5b4a3a] outline-none focus:border-secondary focus:ring-2 focus:ring-secondary/20"
+        />
+        <datalist id="tz-list-admin">
+          {timeZones.map((tz) => (
+            <option key={tz} value={tz} />
+          ))}
+        </datalist>
       </div>
 
       {error && (

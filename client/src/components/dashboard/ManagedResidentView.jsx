@@ -16,7 +16,7 @@ import HowItWorks from './resident/HowItWorks'
  * and How It Works. Header quick-actions (push + guide) live in the tab shell.
  */
 const ManagedResidentView = ({ user, schedule, onRefresh, notify, errorNotify }) => {
-  const providerNext = nextPickupFromSchedule(schedule)
+  const providerNext = nextPickupFromSchedule(schedule, user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC')
   const personalDates = user?.personal_schedule?.pickup_dates || []
   const orgName = schedule?.organization_id?.name || user?.organization_id?.name || 'Your Provider'
   const cycleName = schedule?.cycle?.name || schedule?.cycle_name || 'Not assigned yet'

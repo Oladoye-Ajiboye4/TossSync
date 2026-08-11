@@ -10,6 +10,8 @@
  * spreads — never a for/while loop (project Zero-Loop Rule).
  */
 
+import { DateTime } from 'luxon'
+
 // Interactive pills, ordered Mon → Sun, mapped to their backend numeric value.
 export const DAY_PILLS = [
   { label: 'Mon', value: 1 },
@@ -98,6 +100,37 @@ export const formatSchedule = (cycle = {}) => {
   const days = formatDays(cycleDays(cycle))
   const time = formatTime(cycle.pickup_time)
   return time ? `${days} • ${time}` : days
+}
+
+/**
+ * Convert a stored cycle time ("HH:mm" or similar) from an admin timezone
+ * into a formatted time string in the resident's timezone.
+ *
+ * @param {string} cycleTime - e.g. "10:00" or "07:00"
+ * @param {string} adminTimeZone - IANA timezone of the admin (e.g. "Africa/Lagos")
+ * @param {string} residentTimeZone - IANA timezone of the resident (e.g. "Europe/Amsterdam")
+ * @param {Date|undefined} referenceDate - optional reference date (defaults to today)
+ * @returns {string|null} formatted time in resident zone, e.g. "11:00 AM" or null on error
+ */
+export const convertCycleTimeToResident = (cycleTime, adminTimeZone, residentTimeZone, referenceDate = new Date()) => {
+  const { hours, minutes } = parseClock(cycleTime)
+  const ref = referenceDate instanceof Date && !Number.isNaN(referenceDate.getTime()) ? referenceDate : new Date()
+
+  const adminDT = DateTime.fromObject(
+    {
+      year: ref.getFullYear(),
+      month: ref.getMonth() + 1,
+      day: ref.getDate(),
+      hour: hours,
+      minute: minutes
+    },
+    { zone: adminTimeZone || 'UTC' }
+  )
+
+  if (!adminDT.isValid) return null
+
+  const residentDT = adminDT.setZone(residentTimeZone || 'UTC')
+  return residentDT.toLocaleString(DateTime.TIME_SIMPLE)
 }
 
 /** 'Sat' → 6, 'mon' → 1, 6 → 6. Returns null when it can't be resolved. */
@@ -201,16 +234,46 @@ export const formatPickupDateTime = (date) => {
  * days_of_week + pickup_time (handles both the enriched `cycle` sub-object and
  * flat schedule fields). Returns null when nothing is assigned/derivable.
  */
-export const nextPickupFromSchedule = (schedule) => {
+export const nextPickupFromSchedule = (schedule, residentTimeZone = undefined) => {
   if (!schedule) return null
+  // Prefer server-provided next_pickup (absolute instant)
   if (schedule.next_pickup) {
     const d = new Date(schedule.next_pickup)
     if (!Number.isNaN(d.getTime())) return d
   }
+
   const cycle = schedule.cycle || schedule
   const days = cycleDays(cycle)
   if (days.length === 0) return null
-  return getNextPickupDate(days, cycle.pickup_time || schedule.pickup_time)
+
+  // If residentTimeZone is not provided, fall back to the existing pure-js calculation
+  if (!residentTimeZone) {
+    return getNextPickupDate(days, cycle.pickup_time || schedule.pickup_time)
+  }
+
+  // Timezone-aware computation: interpret the stored pickup_time as occurring in
+  // the organization's/admin's timezone, then convert to an absolute Date.
+  const adminZone =
+    (schedule.cycle && schedule.cycle.timezone) ||
+    (schedule.organization_id && schedule.organization_id.timezone) ||
+    (schedule.organization_timezone) ||
+    'UTC'
+
+  const { hours, minutes } = parseClock(cycle.pickup_time || schedule.pickup_time)
+  const nowAdmin = DateTime.now().setZone(adminZone)
+
+  const candidates = Array.from({ length: 14 }, (_, offset) =>
+    nowAdmin.plus({ days: offset }).set({ hour: hours, minute: minutes, second: 0, millisecond: 0 })
+  )
+    .filter((dt) => days.includes(dt.weekday % 7) && dt.toMillis() > nowAdmin.toMillis())
+    .sort((a, b) => a.toMillis() - b.toMillis())
+
+  const nextAdminDT = candidates[0]
+  if (!nextAdminDT) return null
+
+  // Return a JS Date representing the same instant (UTC) — consumers can format
+  // it in the resident's locale/timezone as needed.
+  return nextAdminDT.setZone('utc').toJSDate()
 }
 
 /**

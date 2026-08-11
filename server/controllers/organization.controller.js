@@ -281,7 +281,7 @@ const sanitizeDays = (days) => {
  */
 const createCycle = async (req, res) => {
     try {
-        const { name, frequency, days_of_week, pickup_time, day_of_week, custom_dates, description } = req.body
+        const { name, frequency, days_of_week, pickup_time, day_of_week, custom_dates, description, timezone } = req.body
         if (!name || !frequency) {
             return res.status(400).json({ message: 'Cycle name and frequency are required' })
         }
@@ -295,12 +295,20 @@ const createCycle = async (req, res) => {
         // Keep the legacy single-day field in sync with the first selected day.
         const primaryDay = cleanDays.length > 0 ? cleanDays[0] : day_of_week
 
+        // Validate timezone if provided
+        let cycleTimezone = undefined
+        if (typeof timezone === 'string' && timezone.length > 0) {
+            // Basic server-side check — accept the string; client should provide a valid IANA name
+            cycleTimezone = timezone
+        }
+
         organization.pickup_cycles.push({
             name,
             frequency,
             days_of_week: cleanDays,
             pickup_time: pickup_time || undefined,
             day_of_week: primaryDay,
+            timezone: cycleTimezone,
             custom_dates,
             description
         })
@@ -324,7 +332,7 @@ const createCycle = async (req, res) => {
 const updateCycle = async (req, res) => {
     try {
         const { cycleId } = req.params
-        const { name, frequency, days_of_week, pickup_time, description } = req.body
+        const { name, frequency, days_of_week, pickup_time, description, timezone } = req.body
 
         const organization = await Organization.findOne({ admin_id: req.user._id })
         if (!organization) {
@@ -340,6 +348,7 @@ const updateCycle = async (req, res) => {
         if (typeof frequency === 'string' && frequency.length > 0) cycle.frequency = frequency
         if (description !== undefined) cycle.description = description
         if (pickup_time !== undefined) cycle.pickup_time = pickup_time || undefined
+        if (timezone !== undefined) cycle.timezone = timezone || undefined
         if (days_of_week !== undefined) {
             const cleanDays = sanitizeDays(days_of_week)
             cycle.days_of_week = cleanDays
@@ -475,9 +484,9 @@ const updateFormSchema = async (req, res) => {
         organization.resident_form_schema = resident_form_schema
         await organization.save()
 
-        return res.status(200).json({ 
-            message: 'Registration form schema updated', 
-            resident_form_schema: organization.resident_form_schema 
+        return res.status(200).json({
+            message: 'Registration form schema updated',
+            resident_form_schema: organization.resident_form_schema
         })
     } catch (err) {
         console.error('Update form schema error:', err)
