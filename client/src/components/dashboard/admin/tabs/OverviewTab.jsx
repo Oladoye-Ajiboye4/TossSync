@@ -26,7 +26,7 @@ const OverviewTab = ({ organization }) => {
       id: cycle._id || cycle.name,
       name: cycle.name,
       description: cycle.description,
-      schedule: formatSchedule(cycle),
+      schedule: formatSchedule(cycle) + (cycle.timezone ? ` • ${cycle.timezone}` : ''),
       badge: FREQUENCY_BADGES[cycle.frequency] || FREQUENCY_BADGES.custom
     }))
   ), [organization])

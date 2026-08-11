@@ -24,6 +24,7 @@ const CycleCard = ({ cycle, assignedCount = 0, onEdit, onDelete, deleting = fals
   const days = sortDays(cycleDays(cycle))
   const time = formatTime(cycle.pickup_time)
   const badgeClass = FREQUENCY_BADGE[cycle.frequency] || FREQUENCY_BADGE.custom
+  const tz = cycle.timezone || ''
 
   return (
     <article
@@ -68,7 +69,7 @@ const CycleCard = ({ cycle, assignedCount = 0, onEdit, onDelete, deleting = fals
       <div className="flex flex-wrap items-center gap-4 border-t border-tertiary/20 pt-3 text-sm">
         <span className="inline-flex items-center gap-1.5 font-semibold text-[#5b4a3a]">
           <Icon icon="mdi:clock-outline" width="16" height="16" className="text-secondary/70" aria-hidden="true" />
-          {time || 'Flexible time'}
+          {time || 'Flexible time'}{tz ? ` • ${tz}` : ''}
         </span>
         <span className="inline-flex items-center gap-1.5 text-secondary/80">
           <Icon icon="mdi:account-group-outline" width="16" height="16" className="text-secondary/70" aria-hidden="true" />

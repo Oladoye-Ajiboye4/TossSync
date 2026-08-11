@@ -22,13 +22,15 @@ const FREQUENCY_LABEL = {
 const toOption = (cycle) => {
   const schedule = formatSchedule(cycle)
   const frequency = FREQUENCY_LABEL[cycle.frequency] || 'Custom'
+  const tz = cycle.timezone || ''
   return {
     id: cycle._id || cycle.name,
     value: cycle.name,
     schedule,
     frequency,
+    timezone: tz,
     description: cycle.description || '',
-    haystack: `${cycle.name} ${schedule} ${frequency} ${cycle.description || ''}`.toLowerCase()
+    haystack: `${cycle.name} ${schedule} ${frequency} ${tz} ${cycle.description || ''}`.toLowerCase()
   }
 }
 
@@ -159,11 +161,10 @@ const CycleCombobox = ({
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border bg-white font-semibold outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizing} ${
-          hasValue
+        className={`inline-flex w-full items-center justify-between gap-2 rounded-lg border bg-white font-semibold outline-none transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${sizing} ${hasValue
             ? 'border-secondary/40 text-[#5b4a3a]'
             : 'border-tertiary/50 text-secondary/50'
-        } hover:border-secondary focus:border-secondary focus:ring-2 focus:ring-secondary/20`}
+          } hover:border-secondary focus:border-secondary focus:ring-2 focus:ring-secondary/20`}
       >
         <span className="flex min-w-0 items-center gap-1.5">
           {loading ? (
@@ -231,22 +232,20 @@ const CycleCombobox = ({
                       aria-selected={isSelected}
                       onMouseEnter={() => setActiveIndex(index)}
                       onClick={() => commit(opt)}
-                      className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors ${
-                        isActive ? 'bg-primary/15' : 'bg-transparent'
-                      }`}
+                      className={`flex w-full items-center justify-between gap-3 px-3 py-2 text-left transition-colors ${isActive ? 'bg-primary/15' : 'bg-transparent'
+                        }`}
                     >
                       <span className="flex min-w-0 items-center gap-2.5">
                         <span
-                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${
-                            isSelected ? 'bg-secondary text-white' : 'bg-primary/20 text-secondary'
-                          }`}
+                          className={`flex size-8 shrink-0 items-center justify-center rounded-lg ${isSelected ? 'bg-secondary text-white' : 'bg-primary/20 text-secondary'
+                            }`}
                         >
                           <Icon icon="mdi:calendar-clock" width="16" height="16" aria-hidden="true" />
                         </span>
                         <span className="min-w-0">
                           <span className="block truncate text-sm font-bold text-[#5b4a3a]">{opt.value}</span>
                           <span className="block truncate text-xs text-secondary/60">
-                            {opt.schedule} • {opt.frequency}
+                            {opt.schedule}{opt.timezone ? ` • ${opt.timezone}` : ''} • {opt.frequency}
                             {opt.description ? ` • ${opt.description}` : ''}
                           </span>
                         </span>
