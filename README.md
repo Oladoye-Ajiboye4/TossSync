@@ -52,7 +52,7 @@ The backend is a modular Express API backed by MongoDB (Mongoose), with JWT auth
 ---
 
 ## Demo Video
-Click here - (`https://drive.google.com/file/d/1KVdmCxEOmCCZAnhBsinTsN4RSkMzZz3n/view?usp=drive_link`)
+Click here - **https://drive.google.com/file/d/1KVdmCxEOmCCZAnhBsinTsN4RSkMzZz3n/view?usp=drive_link**
 
 ---
 ## 🗂️ Monorepo Structure
